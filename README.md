@@ -135,3 +135,93 @@ CREATE TABLE ABASTECIMIENTO(
 )
 GO
 ```
+
+
+-- Consultas simples
+-- Consultar todos los productos:
+SELECT * FROM PRODUCTO;
+
+-- Consultar todos los proveedores:
+SELECT *
+FROM PROVEEDOR;
+
+-- Listar los productos cuyo precio unitario es mayor a 30.
+SELECT COD_PRO, DES_PRO
+FROM PRODUCTO
+WHERE PRE_PRO > 30;
+
+--Listar los vendedores cuyo sueldo es mayor a 1400.
+SELECT COD_VEN, NOM_VEN, APE_VEN
+FROM VENDEDOR
+WHERE SUE_VEN > 1400;
+
+-- Listar todos los vendedores ordenados por apellido de manera descendente.
+SELECT COD_VEN, NOM_VEN, APE_VEN
+FROM VENDEDOR
+ORDER BY APE_VEN DESC;
+
+
+
+--CONSULTAS AVANZADAS
+ -- Obtener la cantidad total de productos vendidos por cada vendedor.
+ SELECT V.COD_VEN, V.NOM_VEN, V.APE_VEN, COUNT(DF.COD_PRO) AS TotalProductosVendidos
+FROM VENDEDOR V
+JOIN FACTURA F ON V.COD_VEN = F.COD_VEN
+JOIN DETALLE_FACTURA DF ON F.NUM_FAC = DF.NUM_FAC
+GROUP BY V.COD_VEN, V.NOM_VEN, V.APE_VEN;
+
+
+-- Obtener el cliente con el mayor número de compras 
+SELECT C.COD_CLI, C.CON_CLI, COUNT(F.NUM_FAC) AS NumeroCompras
+FROM CLIENTE C
+JOIN FACTURA F ON C.COD_CLI = F.COD_CLI
+GROUP BY C.COD_CLI, C.CON_CLI
+ORDER BY NumeroCompras DESC
+
+
+
+--Obtener el número de productos distintos vendidos por cada cliente
+SELECT C.COD_CLI, C.CON_CLI, COUNT(DISTINCT DF.COD_PRO) AS ProductosDistintos
+FROM CLIENTE C
+JOIN FACTURA F ON C.COD_CLI = F.COD_CLI
+JOIN DETALLE_FACTURA DF ON F.NUM_FAC = DF.NUM_FAC
+GROUP BY C.COD_CLI, C.CON_CLI;
+
+
+--Obtener el vendedor que ha realizado la venta de mayor valor en una sola factura
+SELECT V.COD_VEN, V.NOM_VEN, V.APE_VEN, F.NUM_FAC, MAX(DF.CAN_VEN * DF.PRE_VEN) AS MayorVenta
+FROM VENDEDOR V
+JOIN FACTURA F ON V.COD_VEN = F.COD_VEN
+JOIN DETALLE_FACTURA DF ON F.NUM_FAC = DF.NUM_FAC
+GROUP BY V.COD_VEN, V.NOM_VEN, V.APE_VEN, F.NUM_FAC
+ORDER BY MayorVenta DESC
+
+-- Obtener los nombres y apellidos de los vendedores que han vendido productos de un proveedor específico 
+SELECT DISTINCT V.COD_VEN, V.NOM_VEN, V.APE_VEN
+FROM VENDEDOR V
+JOIN FACTURA F ON V.COD_VEN = F.COD_VEN
+JOIN DETALLE_FACTURA DF ON F.NUM_FAC = DF.NUM_FAC
+JOIN PRODUCTO P ON DF.COD_PRO = P.COD_PRO
+WHERE P.COD_PRO = 'P016';
+
+
+
+-- Trigger para actualizar stock post venta
+USE DB_VENTAS
+GO
+CREATE OR ALTER TRIGGER tr_actualizar_stock_post_venta
+ON DETALLE_FACTURA
+AFTER INSERT
+AS
+BEGIN
+    DECLARE @cod_pro CHAR(5)
+    DECLARE @can_venta INT
+
+    SELECT @cod_pro = i.COD_PRO,
+           @can_venta = i.CAN_VEN
+    FROM inserted i
+UPDATE PRODUCTO
+SET SAC_PRO = SAC_PRO - @can_venta
+WHERE COD_PRO = @cod_pro
+END
+GO
